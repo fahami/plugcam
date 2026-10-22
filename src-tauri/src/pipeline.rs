@@ -517,6 +517,10 @@ fn stream(
         let packet = match protocol::read_packet(&mut reader) {
             Ok(p) => p,
             Err(_) if shared.stop.load(Ordering::SeqCst) => return Ok(()),
+            // Not the lens: the encoder gave up at this size. Hiding the lens would be wrong.
+            Err(_) if *frames == 0 && session.log.encoder_failed() => {
+                return Err(format!("the phone could not encode this size, pick a lower quality{}", session.log.problems()).into());
+            }
             // Over USB, no first frame means the lens gives no picture (some listed lenses
             // never do). Over Wi-Fi it may just be the network, unless the server says so.
             Err(_) if *frames == 0 && (!link.wifi || session.log.camera_failed()) => return Err(StreamEnd::NoPicture),

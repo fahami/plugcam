@@ -178,6 +178,13 @@ impl ServerLog {
         lines.iter().any(|l| l.contains("Camera capture failed") || (l.contains("ERROR") && l.contains("amera")))
     }
 
+    /// The phone's video encoder failed, e.g. at a size it cannot encode (4K on a Galaxy A52s). The
+    /// camera then stops too and logs `Camera capture failed`, but the lens itself is fine.
+    pub fn encoder_failed(&self) -> bool {
+        let lines = self.lines.lock().unwrap();
+        lines.iter().any(|l| l.contains("Capture/encoding error") || l.contains("MediaCodec"))
+    }
+
     /// Distinct error and warning lines (at most 3), formatted to be appended to a message.
     pub fn problems(&self) -> String {
         let lines = self.lines.lock().unwrap();
@@ -466,6 +473,20 @@ mod tests {
                 "video_codec_options=i-frame-interval=1",
             ]
         );
+    }
+
+    #[test]
+    fn encoder_failure_is_not_a_broken_lens() {
+        // A Galaxy A52s asked for 4K: the encoder fails first, then the camera stops.
+        let log = ServerLog::default();
+        log.push("[server] INFO: Using camera '0'".into());
+        log.push("[server] ERROR: Capture/encoding error: java.lang.IllegalStateException: Pending dequeue output buffer request cancelled".into());
+        log.push("[server] WARN: Camera capture failed: frame 7".into());
+        assert!(log.encoder_failed());
+
+        let lens = ServerLog::default();
+        lens.push("[server] WARN: Camera capture failed: frame 0".into());
+        assert!(lens.camera_failed() && !lens.encoder_failed());
     }
 
     #[test]
