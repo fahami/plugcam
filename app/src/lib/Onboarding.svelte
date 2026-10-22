@@ -96,7 +96,7 @@
   .layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 360px;
-    height: 100vh;
+    height: calc(100vh - var(--titlebar));
   }
   .art {
     display: grid;

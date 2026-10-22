@@ -28,6 +28,8 @@
   --stage: #202020;
   --stage-text: rgb(255 255 255 / 0.72);
   --stage-outline: oklch(0 0 0 / 0.1);
+  /* Height of the title bar the page runs under (macOS); 0 where the system draws its own. */
+  --titlebar: 0px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -76,6 +78,31 @@ body {
 html.mica,
 html.mica body {
   background: transparent;
+}
+
+/* macOS: Liquid Glass fills the whole window, title bar included. The page starts below the
+   traffic lights, and cards and controls are thinner so the glass shows through them. */
+html.mac {
+  --titlebar: 28px;
+}
+html.mac body {
+  padding-top: var(--titlebar);
+}
+html.mac.mica {
+  --card: rgb(255 255 255 / 0.4);
+  --control: rgb(255 255 255 / 0.5);
+  --control-hover: rgb(255 255 255 / 0.65);
+  --control-pressed: rgb(255 255 255 / 0.35);
+  --stroke: rgb(0 0 0 / 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  html.mac.mica {
+    --card: rgb(255 255 255 / 0.03);
+    --control: rgb(255 255 255 / 0.05);
+    --control-hover: rgb(255 255 255 / 0.08);
+    --control-pressed: rgb(255 255 255 / 0.03);
+    --stroke: rgb(255 255 255 / 0.1);
+  }
 }
 
 button,

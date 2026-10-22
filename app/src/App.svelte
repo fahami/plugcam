@@ -21,6 +21,7 @@
     setOs(s.os);
     setLanguage(s.language);
     document.documentElement.classList.toggle("mica", s.mica);
+    document.documentElement.classList.toggle("mac", s.os === "macos");
     if (!snap) firstSnapshot(s);
     snap = s;
   }
@@ -69,6 +70,10 @@
   }
 </script>
 
+{#if snap?.os === "macos"}
+  <!-- The title bar is part of the glass: this strip over it moves the window. -->
+  <div class="titlebar" data-tauri-drag-region></div>
+{/if}
 {#if snap}
   {#key snap.language}
     {#if screen === "wizard"}
@@ -118,10 +123,16 @@
 {/if}
 
 <style>
+  .titlebar {
+    position: fixed;
+    inset: 0 0 auto;
+    height: var(--titlebar);
+    z-index: 1;
+  }
   .layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
-    height: 100vh;
+    height: calc(100vh - var(--titlebar));
   }
   .video {
     display: flex;
