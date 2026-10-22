@@ -28,7 +28,9 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 sha2 = "0.11.0"
 sys-locale = "0.3.2"
-tauri = { version = "2.11.6", features = ["tray-icon", "image-png"] }
+# macos-private-api: a clear WebView background, so the window's Liquid Glass shows through
+# (tauri.macos.conf.json). It does nothing on Windows; tauri-build wants it to match the config.
+tauri = { version = "2.11.6", features = ["tray-icon", "image-png", "macos-private-api"] }
 tauri-plugin-autostart = "2.5.1"
 tauri-plugin-single-instance = "2.4.5"
 tauri-plugin-updater = "2.13.0"

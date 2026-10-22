@@ -51,9 +51,10 @@ pub fn refresh_camera() {
     }
 }
 
-/// No Mica: the window paints its own background.
+/// The window has a system material behind the page, as Mica on Windows 11: Liquid Glass on
+/// macOS 26 and later, the window vibrancy material before (tauri.macos.conf.json).
 pub fn mica() -> bool {
-    false
+    true
 }
 
 fn command_output(program: &str, args: &[&str]) -> Option<String> {
