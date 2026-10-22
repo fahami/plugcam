@@ -72,6 +72,7 @@ const pl: Messages = {
   "quality.highSpeed": "60 kl./s przez tryb zwolnionego tempa: prostsze kolory, więcej szumu przy słabym świetle, lampy mogą migotać",
   "quality.upscaled": "Ten obiektyw nagrywa najwyżej w {size}, więc obraz jest powiększany",
   "notice.lensHidden": "Obiektyw {id} nie daje obrazu. Został ukryty, włączono główny aparat.",
+  "notice.phoneHot": "Telefon jest gorący i sam się spowalnia, więc obraz ma mniej klatek. Wybierz niższą jakość, zdejmij etui albo przenieś go w chłodniejsze miejsce.",
   "notice.startFailed": "Nie udało się włączyć kamery: {message}",
   "notice.close": "Zamknij",
   "set.video": "Wideo",

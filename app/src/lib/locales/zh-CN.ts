@@ -72,6 +72,7 @@ const zhCN: Messages = {
   "quality.highSpeed": "通过慢动作模式实现 60 帧/秒：色彩更简单，暗光下噪点更多，灯光下可能闪烁",
   "quality.upscaled": "此镜头最高只能拍摄 {size}，画面会被放大",
   "notice.lensHidden": "镜头 {id} 没有画面，已被隐藏，并已切换到主摄。",
+  "notice.phoneHot": "手机过热，正在自动降速，因此画面帧数变少。请选择较低的画质、取下手机壳，或把手机放到更凉快的地方。",
   "notice.startFailed": "无法打开摄像头：{message}",
   "notice.close": "关闭",
   "set.video": "视频",

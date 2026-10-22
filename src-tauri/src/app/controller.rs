@@ -29,6 +29,9 @@ use super::i18n;
 use crate::{platform, portable, vcam};
 
 const DEVICE_POLL: Duration = Duration::from_millis(1500);
+/// How often the streaming phone's temperature is asked while streaming. A phone heats up
+/// over minutes, and `dumpsys thermalservice` costs it a moment of work.
+const THERMAL_POLL: Duration = Duration::from_secs(20);
 /// After this long without zoom messages, the zoom the phone reported is trusted over the
 /// steps counted here (a message sent before the camera was ready is dropped by the server).
 const ZOOM_RESYNC: Duration = Duration::from_secs(1);
@@ -78,6 +81,9 @@ pub struct Snapshot {
     pub zoom_range: Option<(f32, f32)>,
     /// Something that stops the app from working at all (missing adb, camera not installed…).
     pub problem: Option<String>,
+    /// The streaming phone is so hot that it slows down (Android's thermal status "severe" or
+    /// worse), so the picture gets fewer frames.
+    pub phone_hot: bool,
     /// One-off information, e.g. a lens that was hidden.
     pub notice: Option<Notice>,
     /// Running from a portable folder rather than installed.
@@ -184,6 +190,8 @@ struct State {
     problem: Option<String>,
     camera_missing: bool,
     notice: Option<Notice>,
+    /// The last thermal status read from a streaming phone, and its serial.
+    thermal: Option<(String, u8)>,
     last_sent: Option<Snapshot>,
 }
 
@@ -255,6 +263,7 @@ impl Controller {
                 problem,
                 camera_missing: !registered && platform::app_manages_camera(),
                 notice: None,
+                thermal: None,
                 last_sent: None,
             }),
             preview: Arc::new(PreviewSlot::default()),
@@ -413,6 +422,10 @@ impl Controller {
             zoom: st.zoom,
             zoom_range: st.zoom_range,
             problem: st.problem.clone(),
+            phone_hot: match (&st.status, &st.thermal) {
+                (Some(Status::Streaming { serial, .. }), Some((hot, status))) => serial == hot && *status >= adb::THERMAL_SEVERE,
+                _ => false,
+            },
             notice: st.notice.clone(),
             portable: portable::is_portable(),
             manages_camera: platform::app_manages_camera(),
@@ -743,6 +756,7 @@ impl Controller {
     /// on when a phone appears if the user asked for that.
     fn watch_devices(self: Arc<Self>) {
         let Some(adb) = self.adb.clone() else { return };
+        let mut thermal_checked: Option<Instant> = None;
         loop {
             let devices = adb.devices().unwrap_or_default();
             for d in &devices {
@@ -781,6 +795,15 @@ impl Controller {
                 let streaming = matches!(st.status, Some(Status::Streaming { .. }));
                 (st.fps, st.bitrate) = if streaming { (stats.fps, stats.bitrate) } else { (0.0, 0) };
             }
+            let streaming = match &st.status {
+                Some(Status::Streaming { serial, .. }) if st.camera_on => Some(serial.clone()),
+                _ => None,
+            };
+            if let Some(serial) = streaming.filter(|_| thermal_checked.is_none_or(|t| t.elapsed() >= THERMAL_POLL)) {
+                thermal_checked = Some(Instant::now());
+                let (c, adb) = (self.clone(), adb.clone());
+                std::thread::spawn(move || c.check_thermal(&adb, &serial));
+            }
             let auto_start = !was_ready && now_ready.is_some() && st.settings.auto_start_camera && !st.camera_on;
             self.publish(&mut st);
             drop(st);
@@ -789,6 +812,17 @@ impl Controller {
             }
             std::thread::sleep(DEVICE_POLL);
         }
+    }
+
+    /// Reads the streaming phone's thermal status; off the device poll, which it would slow down.
+    fn check_thermal(&self, adb: &Adb, serial: &str) {
+        let Some(status) = adb.thermal_status(serial) else { return };
+        let mut st = self.state.lock().unwrap();
+        if st.thermal.as_ref().map(|(_, s)| *s) != Some(status) {
+            log::info!("phone thermal status: {status}");
+        }
+        st.thermal = Some((serial.to_string(), status));
+        self.publish(&mut st);
     }
 
     /// Keeps the names of remembered Wi-Fi phones up to date once they are fetched.

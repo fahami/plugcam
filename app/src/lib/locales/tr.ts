@@ -72,6 +72,7 @@ const tr: Messages = {
   "quality.highSpeed": "Ağır çekim moduyla 60 fps: daha sade renkler, az ışıkta daha fazla parazit, lambalar altında titreme olabilir",
   "quality.upscaled": "Bu lens en fazla {size} çekiyor, görüntü büyütülüyor",
   "notice.lensHidden": "{id} numaralı lens görüntü vermiyor. Gizlendi, ana kamera açık.",
+  "notice.phoneHot": "Telefon ısındı ve kendini yavaşlatıyor, bu yüzden görüntüde daha az kare var. Daha düşük bir kalite seçin, kılıfını çıkarın ya da daha serin bir yere koyun.",
   "notice.startFailed": "Kamera açılamadı: {message}",
   "notice.close": "Kapat",
   "set.video": "Video",

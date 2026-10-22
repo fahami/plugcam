@@ -72,6 +72,7 @@ const ptBR: Messages = {
   "quality.highSpeed": "60 fps pelo modo câmera lenta: cores mais simples, mais ruído com pouca luz, pode piscar sob lâmpadas",
   "quality.upscaled": "Esta lente grava no máximo em {size}, então a imagem é ampliada",
   "notice.lensHidden": "A lente {id} não dá imagem. Ela foi ocultada e a câmera principal está ativa.",
+  "notice.phoneHot": "O celular está quente e se desacelera, por isso a imagem tem menos quadros. Escolha uma qualidade menor, tire a capinha ou coloque-o num lugar mais fresco.",
   "notice.startFailed": "Não foi possível ligar a câmera: {message}",
   "notice.close": "Fechar",
   "set.video": "Vídeo",

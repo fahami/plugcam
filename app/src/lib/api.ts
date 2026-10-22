@@ -117,6 +117,8 @@ export interface Snapshot {
   zoom: number;
   zoomRange: [number, number] | null;
   problem: string | null;
+  /** The streaming phone is so hot that it slows down and sends fewer frames. */
+  phoneHot: boolean;
   notice: Notice | null;
   /** Running from a portable folder rather than installed. */
   portable: boolean;

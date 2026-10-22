@@ -72,6 +72,7 @@ const ja: Messages = {
   "quality.highSpeed": "スローモーションモードで 60 fps：色味がシンプルになり、暗い場所ではノイズが増え、照明の下でちらつくことがあります",
   "quality.upscaled": "このレンズの最大は {size} なので、映像は拡大されます",
   "notice.lensHidden": "レンズ {id} は映像を出しません。非表示にして、メインカメラに切り替えました。",
+  "notice.phoneHot": "スマートフォンが熱くなり、動作を抑えているため、映像のフレーム数が減っています。画質を下げる、ケースを外す、涼しい場所に置くなどしてください。",
   "notice.startFailed": "カメラをオンにできませんでした: {message}",
   "notice.close": "閉じる",
   "set.video": "ビデオ",

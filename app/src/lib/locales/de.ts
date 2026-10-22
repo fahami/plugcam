@@ -72,6 +72,7 @@ const de: Messages = {
   "quality.highSpeed": "60 fps über den Zeitlupenmodus: einfachere Farben, mehr Rauschen bei wenig Licht, Lampen können flackern",
   "quality.upscaled": "Dieses Objektiv nimmt höchstens {size} auf, das Bild wird hochskaliert",
   "notice.lensHidden": "Objektiv {id} liefert kein Bild. Es ist jetzt ausgeblendet, die Hauptkamera ist an.",
+  "notice.phoneHot": "Das Telefon ist heiß und bremst sich selbst, daher ruckelt das Bild. Wähle eine niedrigere Qualität, nimm die Hülle ab oder stell es an einen kühleren Ort.",
   "notice.startFailed": "Kamera konnte nicht eingeschaltet werden: {message}",
   "notice.close": "Schließen",
   "set.video": "Video",

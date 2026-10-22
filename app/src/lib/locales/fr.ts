@@ -72,6 +72,7 @@ const fr: Messages = {
   "quality.highSpeed": "60 i/s via le mode ralenti : couleurs plus simples, plus de bruit en faible lumière, scintillement possible sous les lampes",
   "quality.upscaled": "Cet objectif filme au plus en {size}, l’image est agrandie",
   "notice.lensHidden": "L’objectif {id} ne donne pas d’image. Il est masqué et la caméra principale est active.",
+  "notice.phoneHot": "Le téléphone chauffe et se bride, l’image a donc moins d’images par seconde. Choisissez une qualité plus basse, retirez sa coque ou placez-le dans un endroit plus frais.",
   "notice.startFailed": "Impossible d’allumer la caméra : {message}",
   "notice.close": "Fermer",
   "set.video": "Vidéo",

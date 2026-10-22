@@ -72,6 +72,7 @@ const es: Messages = {
   "quality.highSpeed": "60 fps con el modo cámara lenta: colores más simples, más ruido con poca luz, puede parpadear bajo las lámparas",
   "quality.upscaled": "Este objetivo graba como máximo en {size}, así que la imagen se amplía",
   "notice.lensHidden": "La lente {id} no da imagen. Se ha ocultado y está activa la cámara principal.",
+  "notice.phoneHot": "El teléfono está caliente y se ralentiza, por eso la imagen tiene menos fotogramas. Elige una calidad más baja, quítale la funda o ponlo en un sitio más fresco.",
   "notice.startFailed": "No se pudo encender la cámara: {message}",
   "notice.close": "Cerrar",
   "set.video": "Vídeo",

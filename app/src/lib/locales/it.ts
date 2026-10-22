@@ -72,6 +72,7 @@ const it: Messages = {
   "quality.highSpeed": "60 fps tramite slow motion: colori più semplici, più rumore con poca luce, possibile sfarfallio sotto le lampade",
   "quality.upscaled": "Questo obiettivo riprende al massimo in {size}, quindi l’immagine viene ingrandita",
   "notice.lensHidden": "L’obiettivo {id} non dà immagine. Ora è nascosto ed è attiva la fotocamera principale.",
+  "notice.phoneHot": "Il telefono è caldo e rallenta, quindi l’immagine ha meno fotogrammi. Scegli una qualità più bassa, togli la custodia o spostalo in un posto più fresco.",
   "notice.startFailed": "Impossibile accendere la fotocamera: {message}",
   "notice.close": "Chiudi",
   "set.video": "Video",

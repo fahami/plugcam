@@ -17,6 +17,7 @@
     X,
     Download,
     ShieldCheck,
+    Thermometer,
     LoaderCircle,
     ChevronRight,
   } from "@lucide/svelte";
@@ -170,6 +171,14 @@
         "camera.off",
       )}{:else}{t("camera.on")}{/if}
   </button>
+
+  {#if snap.phoneHot}
+    <!-- Shown for as long as the phone reports it is hot; nothing to dismiss. -->
+    <div class="notice hot" role="status">
+      <Thermometer size={16} />
+      <span>{t("notice.phoneHot")}</span>
+    </div>
+  {/if}
 
   {#if snap.notice}
     <div class="notice" class:error={snap.notice.kind === "startFailed"} role="alert">
@@ -501,6 +510,9 @@
   }
   .notice.error {
     background: var(--error-soft);
+  }
+  .notice.hot {
+    padding-right: 12px;
   }
   .notice > :global(svg) {
     margin-top: 2px;

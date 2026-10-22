@@ -17,6 +17,10 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 pub const ADB_FILE: &str = if cfg!(windows) { "adb.exe" } else { "adb" };
 /// Longer than any normal command takes, even pushing the server over slow Wi-Fi.
 const RUN_TIMEOUT: Duration = Duration::from_secs(30);
+/// Android's thermal status (`dumpsys thermalservice`) goes from 0 (none) through 3 (severe)
+/// to 6 (shutdown). From "severe" on the phone slows itself down and its camera and encoder
+/// deliver fewer frames.
+pub const THERMAL_SEVERE: u8 = 3;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AdbError {
@@ -175,6 +179,12 @@ impl Adb {
     /// Runs a device shell command; fails if it exits non-zero.
     pub fn shell(&self, serial: &str, command: &str) -> Result<String, AdbError> {
         self.run(Some(serial), &["shell", command])
+    }
+
+    /// The phone's thermal status (see `THERMAL_SEVERE`), if it reports one.
+    pub fn thermal_status(&self, serial: &str) -> Option<u8> {
+        let out = self.run_within(Some(serial), &["shell", "dumpsys", "thermalservice"], Duration::from_secs(5)).ok()?;
+        parse_thermal_status(&out)
     }
 
     /// `adb connect host:port`. Older adb versions exit 0 even when it fails, so the output
@@ -337,6 +347,11 @@ const STATES: [&str; 11] = [
     "sideload", "rescue", "host", "unknown",
 ];
 
+/// The `Thermal Status: N` line of `dumpsys thermalservice`.
+pub fn parse_thermal_status(output: &str) -> Option<u8> {
+    output.lines().find_map(|l| l.trim().strip_prefix("Thermal Status:")).and_then(|v| v.trim().parse().ok())
+}
+
 /// Parses `adb devices -l`.
 pub fn parse_devices(output: &str) -> Vec<Device> {
     output
@@ -395,6 +410,14 @@ fn words_with_offsets(line: &str) -> Vec<(usize, &str)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_thermal_status() {
+        // As a Galaxy A52s (Android 17) prints it, hot after half an hour of streaming.
+        let out = "IsStatusOverride: false\nThermalEventListeners:\n\tcallbacks: 2\nThermal Status: 3\nCached temperatures:\n\tTemperature{mValue=38.3, mType=2, mName=SUBBAT, mStatus=0}\n";
+        assert_eq!(parse_thermal_status(out), Some(3));
+        assert_eq!(parse_thermal_status("Can't find service: thermalservice"), None);
+    }
 
     #[test]
     fn parses_device_list() {

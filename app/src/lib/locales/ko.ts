@@ -72,6 +72,7 @@ const ko: Messages = {
   "quality.highSpeed": "슬로 모션 모드로 60 fps: 색이 단순해지고, 어두운 곳에서 노이즈가 늘며, 조명 아래에서 깜빡일 수 있습니다",
   "quality.upscaled": "이 렌즈는 최대 {size}까지 촬영하므로 화면이 확대됩니다",
   "notice.lensHidden": "렌즈 {id}에서 화면이 나오지 않아 숨기고 메인 카메라로 바꿨습니다.",
+  "notice.phoneHot": "휴대폰이 뜨거워져 스스로 속도를 낮추고 있어 화면 프레임이 줄었습니다. 화질을 낮추거나, 케이스를 벗기거나, 더 시원한 곳에 두세요.",
   "notice.startFailed": "카메라를 켜지 못했습니다: {message}",
   "notice.close": "닫기",
   "set.video": "비디오",

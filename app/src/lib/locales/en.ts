@@ -72,6 +72,7 @@ const en = {
   "quality.highSpeed": "60 fps through slow-motion mode: simpler colors, more noise in low light, may flicker under lamps",
   "quality.upscaled": "This lens captures at most {size}, so the picture is scaled up",
   "notice.lensHidden": "Lens {id} gives no picture. It is now hidden and the main camera is on.",
+  "notice.phoneHot": "The phone is hot and slows itself down, so the picture has fewer frames. Pick a lower quality, take off its case, or move it somewhere cooler.",
   "notice.startFailed": "Could not turn the camera on: {message}",
   "notice.close": "Close",
   "set.video": "Video",
