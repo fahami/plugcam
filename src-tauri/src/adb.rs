@@ -1,7 +1,8 @@
-//! Thin wrapper around adb.exe: device list, push, tunnels, shell commands and the Wi-Fi
+//! Thin wrapper around adb: device list, push, tunnels, shell commands and the Wi-Fi
 //! side (pairing, connecting, mDNS discovery).
 
 use std::io::{self, Read};
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -10,13 +11,16 @@ use std::time::{Duration, Instant};
 use crate::resources;
 
 /// Keeps adb from flashing a console window when called from the GUI app.
+#[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+/// The file name of the bundled adb.
+pub const ADB_FILE: &str = if cfg!(windows) { "adb.exe" } else { "adb" };
 /// Longer than any normal command takes, even pushing the server over slow Wi-Fi.
 const RUN_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, thiserror::Error)]
 pub enum AdbError {
-    #[error("adb.exe not found (bundled, PLUGCAM_ADB or PATH)")]
+    #[error("adb not found (bundled, PLUGCAM_ADB or PATH)")]
     NotFound,
     #[error("cannot run adb: {0}")]
     Io(#[from] io::Error),
@@ -57,18 +61,25 @@ impl Device {
 }
 
 impl Adb {
-    /// Bundled adb next to the app first, then `PLUGCAM_ADB`, then whatever is on PATH.
+    /// Bundled adb next to the app first, then `PLUGCAM_ADB`, then whatever is on PATH, then
+    /// (on macOS) the usual install folders: apps started from the Finder get a PATH without
+    /// Homebrew or the Android SDK in it.
     pub fn locate() -> Result<Self, AdbError> {
-        if let Some(exe) = resources::find("adb.exe", "PLUGCAM_ADB") {
+        if let Some(exe) = resources::find(ADB_FILE, "PLUGCAM_ADB") {
             return Ok(Self { exe });
         }
-        let on_path = Command::new("adb")
-            .arg("version")
-            .creation_flags(CREATE_NO_WINDOW)
-            .stdin(Stdio::null())
-            .output()
-            .is_ok_and(|o| o.status.success());
-        if on_path { Ok(Self { exe: "adb".into() }) } else { Err(AdbError::NotFound) }
+        let works = |exe: &Path| {
+            no_console(&mut Command::new(exe))
+                .arg("version")
+                .stdin(Stdio::null())
+                .output()
+                .is_ok_and(|o| o.status.success())
+        };
+        std::iter::once(PathBuf::from("adb"))
+            .chain(install_dirs().into_iter().map(|d| d.join(ADB_FILE)).filter(|p| p.is_file()))
+            .find(|exe| works(exe))
+            .map(|exe| Self { exe })
+            .ok_or(AdbError::NotFound)
     }
 
     pub fn exe(&self) -> &Path {
@@ -78,7 +89,7 @@ impl Adb {
     /// `adb [-s serial]` with no console window and stdin closed.
     pub fn command(&self, serial: Option<&str>) -> Command {
         let mut cmd = Command::new(&self.exe);
-        cmd.creation_flags(CREATE_NO_WINDOW).stdin(Stdio::null());
+        no_console(&mut cmd).stdin(Stdio::null());
         if let Some(serial) = serial {
             cmd.args(["-s", serial]);
         }
@@ -292,6 +303,31 @@ pub fn choose<'a>(devices: impl IntoIterator<Item = &'a Device>, preferred: Opti
         .or_else(|| ready.iter().find(|d| !d.is_wifi()))
         .or(ready.first())
         .copied()
+}
+
+/// Keeps a console program from opening a window of its own (Windows only).
+fn no_console(cmd: &mut Command) -> &mut Command {
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
+}
+
+/// Where adb usually is when it was installed by hand, for apps that do not inherit a shell's
+/// PATH: Homebrew, the Android SDK (`ANDROID_HOME` or Android Studio's default).
+fn install_dirs() -> Vec<PathBuf> {
+    if !cfg!(target_os = "macos") {
+        return Vec::new();
+    }
+    let mut dirs = vec![PathBuf::from("/opt/homebrew/bin"), PathBuf::from("/usr/local/bin")];
+    for var in ["ANDROID_HOME", "ANDROID_SDK_ROOT"] {
+        if let Some(sdk) = std::env::var_os(var) {
+            dirs.push(PathBuf::from(sdk).join("platform-tools"));
+        }
+    }
+    if let Some(home) = std::env::var_os("HOME") {
+        dirs.push(PathBuf::from(home).join("Library/Android/sdk/platform-tools"));
+    }
+    dirs
 }
 
 /// States `adb devices` prints after the serial. mDNS serials can contain spaces

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "title": "Plugcam",
+        "width": 980,
+        "height": 700,
+        "minWidth": 760,
+        "minHeight": 560,
+        "center": true,
+        "visible": false
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["app", "dmg"],
+    "category": "public.app-category.video",
+    "shortDescription": "Your Android phone as a webcam",
+    "longDescription": "Plugcam turns an Android phone's camera into a Mac webcam over USB or Wi-Fi: no app on the phone, no watermarks, free and open source.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns"],
+    "resources": {
+      "resources/x86/*": null
+    },
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    }
+  }
+}

@@ -24,6 +24,13 @@ pub enum VcamError {
     CreateFailed,
 }
 
+/// The camera of this platform, `width`x`height`: the DLL bundled with the app, or the
+/// development build.
+pub fn open(width: u32, height: u32) -> Result<VirtualCamera, String> {
+    let dll = crate::resources::vcam_dll().ok_or("plugcam_cam.dll not found (build vcam or set PLUGCAM_VCAM_DLL)")?;
+    VirtualCamera::create(&dll, width, height).map_err(|e| e.to_string())
+}
+
 /// A live virtual camera. Frames are 24-bit BGR, rows top to bottom, no padding.
 /// The camera disappears for client apps when this is dropped.
 pub struct VirtualCamera {

@@ -67,10 +67,30 @@ fn main() {
     println!("decode {:.2} ms, convert {:.2} ms per frame", per_frame(decode_time), per_frame(convert_time));
     let (wall, cpu) = (wall_start.elapsed(), process_cpu() - cpu_start);
     println!("CPU time {:.2} ms per frame ({:.1} cores while replaying)", per_frame(cpu), cpu.as_secs_f64() / wall.as_secs_f64());
+    #[cfg(windows)]
     println!("private memory: {} MB now, {} MB at most", private_mb().0, private_mb().1);
+    #[cfg(unix)]
+    println!("resident memory: {} MB at most", usage().ru_maxrss >> 20);
+}
+
+/// Resource usage of this process so far (`ru_maxrss` is in bytes on macOS).
+#[cfg(unix)]
+fn usage() -> libc::rusage {
+    let mut u: libc::rusage = unsafe { std::mem::zeroed() };
+    unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut u) };
+    u
+}
+
+/// User + kernel time of this process so far.
+#[cfg(unix)]
+fn process_cpu() -> Duration {
+    let u = usage();
+    let time = |t: libc::timeval| Duration::new(t.tv_sec as u64, t.tv_usec as u32 * 1000);
+    time(u.ru_utime) + time(u.ru_stime)
 }
 
 /// Private bytes of this process in MB: current and peak.
+#[cfg(windows)]
 fn private_mb() -> (usize, usize) {
     use windows::Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX};
     use windows::Win32::System::Threading::GetCurrentProcess;
@@ -81,6 +101,7 @@ fn private_mb() -> (usize, usize) {
 }
 
 /// User + kernel time of this process so far.
+#[cfg(windows)]
 fn process_cpu() -> Duration {
     use windows::Win32::Foundation::FILETIME;
     use windows::Win32::System::Threading::{GetCurrentProcess, GetProcessTimes};

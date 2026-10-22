@@ -1,7 +1,7 @@
 <script lang="ts">
   import * as api from "./api";
   import type { Snapshot } from "./api";
-  import { t } from "./i18n";
+  import { isMac, t } from "./i18n";
   import { Check, Info, ExternalLink, LoaderCircle } from "@lucide/svelte";
 
   let { snap, ondone }: { snap: Snapshot; ondone: () => void } = $props();
@@ -73,7 +73,8 @@
           <span>{t("status.noPhone")}</span>
         {/if}
       </div>
-      {#if !connected}
+      <!-- Macs need no USB driver for adb. -->
+      {#if !connected && !isMac()}
         <button class="text-btn ext" onclick={() => api.openUrl("https://developer.android.com/studio/run/win-usb")}>
           {t("wiz.3.driver")} <ExternalLink size={14} />
         </button>

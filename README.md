@@ -175,6 +175,25 @@ way, and you can turn the daily check off in Settings.
 - On most PCs the phone's USB driver comes with Windows Update. If the phone is not found, install
   the [Google USB driver](https://developer.android.com/studio/run/win-usb) or your phone maker's
   driver.
+- On a Mac: macOS 13 Ventura or newer, Apple silicon or Intel. No driver needed. See
+  [macOS](#macos) below.
+
+## macOS
+
+Plugcam also runs natively on macOS. "Plugcam Camera" is a CoreMediaIO camera extension inside
+the app, so it shows up in FaceTime, Photo Booth, Zoom, Google Meet in Safari or Chrome, OBS and
+any other app that lists cameras. The phone's H.264 stream is decoded by VideoToolbox, on the
+Mac's media engine.
+
+1. Build and install it (see [Build on macOS](#build-on-macos)). The app has to be in
+   `/Applications`: macOS only installs camera extensions from there.
+2. Open Plugcam and press **Add camera**. macOS opens *System Settings → General → Login Items &
+   Extensions → Camera Extensions*: turn **Plugcam** on. This happens once.
+3. Plug in the phone, allow USB debugging on it, press **Turn camera on**, and pick **Plugcam
+   Camera** in your video app.
+
+To remove the camera, use *Remove Plugcam Camera from this Mac* in Settings before you move the
+app to the Trash. Closed, Plugcam keeps running in the menu bar; *Quit* is in its menu.
 
 ## FAQ
 
@@ -247,6 +266,12 @@ exits and removes itself from the phone.
 The app is written in Rust with [Tauri](https://tauri.app) and [Svelte](https://svelte.dev). The
 virtual camera is a fork of [Softcam](https://github.com/tshino/softcam).
 
+On macOS the decoder is VideoToolbox and the camera is a CoreMediaIO camera extension
+([macos/CameraExtension](macos/CameraExtension)) that macOS runs on its own. Plugcam writes frames
+into the extension's sink stream as IOSurface-backed pixel buffers
+([macos/host/camera.m](macos/host/camera.m)); video apps read its source stream. Between frames,
+or while Plugcam is off, apps keep the last picture.
+
 ## Build from source
 
 You need Rust (stable), Node.js 24 with pnpm, Visual Studio 2022 or newer with the C++ desktop
@@ -263,6 +288,24 @@ To build the installer: `.\scripts\stage-resources.ps1` (copies adb and the came
 `src-tauri\resources`), then `pnpm tauri build`; `.\scripts\portable.ps1` packs the portable zip
 from that build. Tests: `cargo test` in `src-tauri`. Releases are built by
 [.github/workflows/release.yml](.github/workflows/release.yml) when a `v*` tag is pushed.
+
+### Build on macOS
+
+You need Xcode (signed in to your Apple developer account under *Settings → Accounts*: camera
+extensions must be signed), Rust (stable), Node.js 24 with pnpm, [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+(`brew install xcodegen`) and adb (`brew install --cask android-platform-tools`, or pass
+`--download-adb`).
+
+```bash
+pnpm install
+scripts/macos-build.sh --install  # builds, signs and copies Plugcam.app to /Applications
+```
+
+The first build registers the bundle IDs (`io.github.plugcam` and `io.github.plugcam.camera`)
+with the System Extension capability on your team; set `PLUGCAM_BUNDLE_ID` to use others.
+`--dmg` also packs a disk image, and `PLUGCAM_PROFILE=release-fast` builds much faster. The app is
+signed for development: to hand it to others it needs a Developer ID certificate and Apple's
+notarization. Tests: `cargo test` in `src-tauri` (the H.264 test runs through VideoToolbox).
 
 The design notes (in Russian) are in [docs/SPEC.md](docs/SPEC.md).
 

@@ -1,12 +1,12 @@
 //! Stage 1 check: feeds "Plugcam Camera" with a color fill that changes every second
 //! plus a moving white bar, so both color and motion are visible in Zoom/OBS.
 //!
-//! cargo run --release --example vcam_fill -- [seconds] [path\to\plugcam_cam.dll]
+//! cargo run --release --example vcam_fill -- [seconds]
+//!
+//! On Windows `PLUGCAM_VCAM_DLL` picks another camera DLL than the development build. On macOS
+//! the camera extension has to be installed (by the app) first.
 
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
-
-use plugcam::vcam::VirtualCamera;
 
 const WIDTH: u32 = 1920;
 const HEIGHT: u32 = 1080;
@@ -24,15 +24,11 @@ const COLORS: [[u8; 3]; 6] = [
 fn main() {
     let mut args = std::env::args().skip(1);
     let seconds: u64 = args.next().map(|s| s.parse().expect("seconds")).unwrap_or(60);
-    let dll = args.next().map(PathBuf::from).unwrap_or_else(|| {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(r"..\vcam\dist\bin\x64\plugcam_cam.dll")
-    });
-
-    let cam = VirtualCamera::create(&dll, WIDTH, HEIGHT).unwrap_or_else(|e| {
+    let cam = plugcam::vcam::open(WIDTH, HEIGHT).unwrap_or_else(|e| {
         eprintln!("error: {e}");
         std::process::exit(1);
     });
-    println!("Plugcam Camera is up at {WIDTH}x{HEIGHT} for {seconds}s (dll: {})", dll.display());
+    println!("Plugcam Camera is up at {WIDTH}x{HEIGHT} for {seconds}s");
 
     let mut frame = vec![0u8; cam.frame_len()];
     let row_len = WIDTH as usize * 3;

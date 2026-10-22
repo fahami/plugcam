@@ -47,7 +47,7 @@
     try {
       await api.setCameraRegistered(false);
     } catch {
-      // Declined at the Windows prompt: nothing changed.
+      // Declined at the system's prompt: nothing changed.
     } finally {
       removing = false;
     }
@@ -207,7 +207,7 @@
         <span>{t("set.whatsNew")}</span>
         <ChevronRight size={16} />
       </button>
-      {#if snap.portable && !snap.cameraMissing}
+      {#if snap.managesCamera && !snap.cameraMissing}
         <button class="row link middle" disabled={removing} onclick={removeCamera}>
           <span class="row-text">
             <span>{t("set.removeCamera")}</span>

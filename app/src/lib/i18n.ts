@@ -1,7 +1,9 @@
-// UI strings. The backend picks the language (setting, else Windows) and sends it in
+// UI strings. The backend picks the language (setting, else the system's) and sends it in
 // Snapshot.language; the dictionaries live in ./locales, English is the source of keys.
+// On macOS the few texts about the system come from ./locales/en-mac.
 
 import en, { type Key, type Messages } from "./locales/en";
+import enMac from "./locales/en-mac";
 import ru from "./locales/ru";
 import uk from "./locales/uk";
 import de from "./locales/de";
@@ -33,6 +35,16 @@ export const LANGUAGES: { code: string; name: string; messages: Messages }[] = [
 ];
 
 let dict: Messages = en;
+let mac = false;
+
+/** `Snapshot.os`: `windows` or `macos`. */
+export function setOs(os: string) {
+  mac = os === "macos";
+}
+
+export function isMac(): boolean {
+  return mac;
+}
 
 export function setLanguage(code: string) {
   const lang = LANGUAGES.find((l) => l.code === code) ?? LANGUAGES[0];
@@ -46,5 +58,5 @@ export function hasKey(key: string): key is Key {
 }
 
 export function t(key: Key, params: Record<string, string | number> = {}): string {
-  return dict[key].replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? ""));
+  return ((mac && enMac[key]) || dict[key]).replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? ""));
 }

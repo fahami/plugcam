@@ -1,0 +1,47 @@
+# XcodeGen spec for the macOS camera extension (`xcodegen generate` in this folder makes
+# PlugcamMac.xcodeproj). Build everything with scripts/macos-build.sh, which passes the team and
+# version; the Rust app itself is built by Tauri.
+name: PlugcamMac
+options:
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    # The app's bundle identifier (`identifier` in tauri.conf.json); the extension's is this
+    # plus `.camera`, as macOS requires.
+    PLUGCAM_BUNDLE_ID: io.github.plugcam
+    MARKETING_VERSION: 0.2.1
+    CURRENT_PROJECT_VERSION: 0.2.1
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+targets:
+  PlugcamCamera:
+    type: system-extension
+    platform: macOS
+    sources:
+      - path: CameraExtension
+        excludes: [Info.plist, "*.entitlements"]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PLUGCAM_BUNDLE_ID).camera
+        PRODUCT_NAME: $(PRODUCT_BUNDLE_IDENTIFIER)
+        INFOPLIST_FILE: CameraExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: CameraExtension/CameraExtension.entitlements
+        SKIP_INSTALL: YES
+  Plugcam:
+    type: application
+    platform: macOS
+    sources:
+      - path: SigningHost
+        excludes: [Info.plist, "*.entitlements"]
+    dependencies:
+      - target: PlugcamCamera
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PLUGCAM_BUNDLE_ID)
+        INFOPLIST_FILE: SigningHost/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SigningHost/Plugcam.entitlements

@@ -26,7 +26,8 @@ pub fn create(app: &AppHandle, snap: &Snapshot) -> tauri::Result<()> {
         .icon(app.default_window_icon().cloned().expect("app icon"))
         .tooltip(t.tooltip_off)
         .menu(&menu)
-        .show_menu_on_left_click(false)
+        // A click opens the window on Windows; menu bar icons on macOS open their menu.
+        .show_menu_on_left_click(cfg!(target_os = "macos"))
         .on_menu_event(|app, event| match event.id.as_ref() {
             "toggle" => {
                 let c = app.state::<Arc<Controller>>().inner().clone();
@@ -37,7 +38,8 @@ pub fn create(app: &AppHandle, snap: &Snapshot) -> tauri::Result<()> {
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+            let click = matches!(event, TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. });
+            if click && !cfg!(target_os = "macos") {
                 super::show_window(tray.app_handle());
             }
         })

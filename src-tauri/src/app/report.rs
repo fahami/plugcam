@@ -1,17 +1,15 @@
 //! "Report a problem": a text file with what an issue needs, saved to Downloads and shown in
-//! Explorer, then GitHub's new-issue form with the version, Windows and phone filled in. Nothing
+//! Explorer or the Finder, then GitHub's new-issue form with the version, OS and phone filled in. Nothing
 //! is sent anywhere by the app: the user reads the file and attaches it.
 
-use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
-use std::process::Command;
 
 use super::Controller;
 use crate::{diag, platform, portable};
 
 const NEW_ISSUE: &str = "https://github.com/Qwinty/plugcam/issues/new?template=bug.yml";
 
-/// Saves the report and opens Explorer and the issue form. Returns the file's path.
+/// Saves the report and shows it, and opens the issue form. Returns the file's path.
 pub fn create(c: &Controller) -> Result<PathBuf, String> {
     let text = diag::redact(&build(c));
     let dir = platform::downloads_dir().or_else(diag::log_dir).ok_or("no folder for the report")?;
@@ -20,14 +18,14 @@ pub fn create(c: &Controller) -> Result<PathBuf, String> {
     std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
     log::info!("report saved");
 
-    // `/select,"path"` has to reach Explorer unquoted as a whole, which `arg` would do.
-    let _ = Command::new("explorer").raw_arg(format!("/select,\"{}\"", path.display())).spawn();
+    platform::reveal(&path);
     let mut url = format!("{NEW_ISSUE}&version={}", encode(env!("CARGO_PKG_VERSION")));
-    url += &format!("&windows={}", encode(&platform::windows_name()));
+    // The issue form's field is named `windows`; it takes the macOS version too.
+    url += &format!("&windows={}", encode(&platform::os_name()));
     if let Some(phone) = c.phone_summary() {
         url += &format!("&phone={}", encode(&phone));
     }
-    let _ = Command::new("explorer").arg(&url).spawn();
+    let _ = platform::open(&url);
     Ok(path)
 }
 
@@ -35,7 +33,7 @@ pub fn create(c: &Controller) -> Result<PathBuf, String> {
 pub fn open_log_folder() -> Result<(), String> {
     let dir = diag::log_dir().ok_or("no log folder")?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Command::new("explorer").arg(&dir).spawn().map(drop).map_err(|e| e.to_string())
+    platform::open(&dir.to_string_lossy())
 }
 
 fn build(c: &Controller) -> String {
@@ -48,11 +46,11 @@ fn build(c: &Controller) -> String {
         env!("CARGO_PKG_VERSION"),
         if portable::is_portable() { "portable" } else { "installed" }
     );
-    out += &format!("{}\n", platform::windows_name());
+    out += &format!("{}\n", platform::os_name());
     let gpus = platform::gpu_names();
     out += &format!("GPU: {}\n", if gpus.is_empty() { "none found".into() } else { gpus.join("; ") });
     out += &format!(
-        "Camera DLL: {}\n",
+        "Camera: {}\n",
         platform::vcam_registered_path().unwrap_or_else(|| "not registered".into())
     );
     out += &format!("Detailed log: {}\n", if diag::is_detailed() { "on" } else { "off" });

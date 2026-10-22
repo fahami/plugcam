@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged into the app's Info.plist by Tauri when it bundles for macOS. -->
+<plist version="1.0">
+<dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Plugcam sends your phone's picture to Plugcam Camera, so video apps can use it.</string>
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>Plugcam Camera shows the camera of your Android phone to video apps.</string>
+</dict>
+</plist>

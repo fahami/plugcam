@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import * as api from "./lib/api";
   import type { Snapshot, UpdateView } from "./lib/api";
-  import { setLanguage, t } from "./lib/i18n";
+  import { setLanguage, setOs, t } from "./lib/i18n";
   import { statusInfo } from "./lib/status";
   import Controls from "./lib/Controls.svelte";
   import Preview from "./lib/Preview.svelte";
@@ -18,6 +18,7 @@
   let dialog = $state<{ mode: "update" } | { mode: "whatsNew"; releases: Release[] } | null>(null);
 
   function apply(s: Snapshot) {
+    setOs(s.os);
     setLanguage(s.language);
     document.documentElement.classList.toggle("mica", s.mica);
     if (!snap) firstSnapshot(s);

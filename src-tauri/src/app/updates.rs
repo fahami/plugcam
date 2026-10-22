@@ -18,8 +18,14 @@ use crate::portable;
 
 const FIRST_CHECK_DELAY: Duration = Duration::from_secs(10);
 const CHECK_EVERY: Duration = Duration::from_secs(24 * 60 * 60);
-/// Manifest entries: the installer for installed copies, the zip for portable ones.
+/// Manifest entries: the installer for installed copies, the zip for portable ones. On macOS
+/// the updater replaces the app bundle.
+#[cfg(windows)]
 const TARGET_INSTALLER: &str = "windows-x86_64";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const TARGET_INSTALLER: &str = "darwin-aarch64";
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const TARGET_INSTALLER: &str = "darwin-x86_64";
 const TARGET_PORTABLE: &str = "windows-x86_64-portable";
 
 #[derive(Debug, Clone, Serialize, PartialEq, Default)]
@@ -225,8 +231,14 @@ async fn download_and_install(app: &AppHandle, update: &Update) -> Result<(), St
             super::quit(&app);
             Ok(())
         } else {
-            // Starts the installer and exits the process.
-            update.install(bytes).map_err(|e| e.to_string())
+            // Windows: starts the installer and exits the process. macOS: replaces the app
+            // bundle, and the new version starts from there.
+            update.install(bytes).map_err(|e| e.to_string())?;
+            if cfg!(target_os = "macos") {
+                app.state::<Arc<Controller>>().shutdown();
+                app.restart()
+            }
+            Ok(())
         }
     })
     .await

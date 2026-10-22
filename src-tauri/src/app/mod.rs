@@ -43,8 +43,9 @@ pub fn run() {
                 "Plugcam {} ({}), {}",
                 env!("CARGO_PKG_VERSION"),
                 if portable { "portable" } else { "installed" },
-                crate::platform::windows_name()
+                crate::platform::os_name()
             );
+            crate::platform::refresh_camera();
             app.manage(controller.clone());
             tray::create(app.handle(), &controller.snapshot())?;
             start_preview_thread(app.handle().clone(), controller);
@@ -104,10 +105,14 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while running Plugcam")
-        .run(|_, event| {
+        .run(|app, event| match event {
             // The last window closing leaves the app in the tray; only `quit` ends it.
-            if let RunEvent::ExitRequested { code: None, api, .. } = event {
-                api.prevent_exit();
+            RunEvent::ExitRequested { code: None, api, .. } => api.prevent_exit(),
+            // A click on the Dock icon after the window was closed.
+            #[cfg(target_os = "macos")]
+            RunEvent::Reopen { .. } => show_window(app),
+            _ => {
+                let _ = app;
             }
         });
 }
@@ -291,7 +296,7 @@ fn open_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") {
         return Err("only https links".into());
     }
-    std::process::Command::new("explorer").arg(&url).spawn().map(drop).map_err(|e| e.to_string())
+    crate::platform::open(&url)
 }
 
 /// "Save report…": writes the report to Downloads, shows it in Explorer, opens the issue form.

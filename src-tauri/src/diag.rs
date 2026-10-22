@@ -3,15 +3,18 @@
 //! Lines at `info` and up always land in a ring buffer in memory: nothing touches the disk, and
 //! a report still has the recent history to show. The "Detailed log" setting adds Plugcam's own
 //! `debug` lines and writes everything to `plugcam.log` (rotated at 5 MB, one old file kept).
-//! A panic or a native crash (an access violation in Media Foundation, say) saves the buffer to
-//! `last-crash.log`, so a crash leaves a trace with the file off too.
+//! A panic or a native crash (an access violation in Media Foundation, say; Windows only) saves
+//! the buffer to `last-crash.log`, so a crash leaves a trace with the file off too.
 //! Phone serials and the user's profile folder are hidden before a line is stored anywhere.
 
 use std::collections::VecDeque;
+#[cfg(windows)]
 use std::fmt::Write as _;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
+#[cfg(windows)]
 use std::os::windows::ffi::OsStrExt;
+#[cfg(windows)]
 use std::os::windows::io::FromRawHandle;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -19,22 +22,27 @@ use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError, TryLockError};
 use std::time::Duration;
 
 use log::{Level, LevelFilter, Log, Metadata, Record};
+#[cfg(windows)]
 use windows::Win32::Foundation::{GENERIC_WRITE, HMODULE};
+#[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{CREATE_ALWAYS, CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ};
+#[cfg(windows)]
 use windows::Win32::System::Diagnostics::Debug::{
     EXCEPTION_POINTERS, LPTOP_LEVEL_EXCEPTION_FILTER, SetUnhandledExceptionFilter,
 };
+#[cfg(windows)]
 use windows::Win32::System::LibraryLoader::{
     GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, GetModuleFileNameW,
     GetModuleHandleExW,
 };
+#[cfg(windows)]
 use windows::core::PCWSTR;
 
 pub const LOG_FILE: &str = "plugcam.log";
 pub const OLD_LOG_FILE: &str = "plugcam.1.log";
 pub const CRASH_FILE: &str = "last-crash.log";
 /// The bundle identifier in `tauri.conf.json`: Tauri keeps the installed app's logs in
-/// `%LOCALAPPDATA%\<identifier>\logs`.
+/// `%LOCALAPPDATA%\<identifier>\logs` on Windows and `~/Library/Logs/<identifier>` on macOS.
 const IDENTIFIER: &str = "io.github.plugcam";
 const BUFFER_LINES: usize = 2000;
 const FILE_LIMIT: u64 = 5 * 1024 * 1024;
@@ -57,7 +65,10 @@ struct State {
     in_file: u64,
     dir: Option<PathBuf>,
     /// `last-crash.log` as null-terminated UTF-16, ready for a crash that must not allocate.
+    #[cfg(windows)]
     crash_wide: Vec<u16>,
+    #[cfg(not(windows))]
+    crash_path: Option<PathBuf>,
     file: Option<File>,
     file_size: u64,
     /// `(text, replacement)` pairs applied to every line.
@@ -65,6 +76,7 @@ struct State {
 }
 
 static LOGGER: OnceLock<Logger> = OnceLock::new();
+#[cfg(windows)]
 static PREVIOUS_FILTER: OnceLock<LPTOP_LEVEL_EXCEPTION_FILTER> = OnceLock::new();
 
 /// Installs the logger and the crash handlers. The log folder is known from the start, so a
@@ -84,8 +96,13 @@ pub fn init() {
     logger.update_max_level();
     {
         let mut st = logger.lock();
+        #[cfg(windows)]
         if let Some(home) = std::env::var_os("USERPROFILE") {
             st.hide(&home.to_string_lossy(), "%USERPROFILE%");
+        }
+        #[cfg(not(windows))]
+        if let Some(home) = std::env::var_os("HOME") {
+            st.hide(&home.to_string_lossy(), "~");
         }
         if let Some(dir) = default_dir() {
             st.set_dir(dir);
@@ -97,9 +114,12 @@ pub fn init() {
         on_panic(&format!("panic in thread '{thread}': {info}"));
         previous(info);
     }));
-    // SAFETY: `on_exception` has the signature Windows expects and lives for the whole process.
-    let previous = unsafe { SetUnhandledExceptionFilter(Some(on_exception)) };
-    let _ = PREVIOUS_FILTER.set(previous);
+    #[cfg(windows)]
+    {
+        // SAFETY: `on_exception` has the signature Windows expects and lives for the whole process.
+        let previous = unsafe { SetUnhandledExceptionFilter(Some(on_exception)) };
+        let _ = PREVIOUS_FILTER.set(previous);
+    }
 }
 
 /// Where `app::run` will put the logs: `logs\` next to portable data, or Tauri's log folder.
@@ -107,7 +127,10 @@ fn default_dir() -> Option<PathBuf> {
     if crate::portable::is_portable() {
         return Some(crate::portable::data_dir().join("logs"));
     }
-    std::env::var_os("LOCALAPPDATA").map(|d| PathBuf::from(d).join(IDENTIFIER).join("logs"))
+    #[cfg(windows)]
+    return std::env::var_os("LOCALAPPDATA").map(|d| PathBuf::from(d).join(IDENTIFIER).join("logs"));
+    #[cfg(not(windows))]
+    return std::env::var_os("HOME").map(|d| PathBuf::from(d).join("Library/Logs").join(IDENTIFIER));
 }
 
 /// Sets the folder for the log files and turns the file on or off.
@@ -220,6 +243,7 @@ fn on_panic(text: &str) {
     st.write_crash(&header);
 }
 
+#[cfg(windows)]
 /// The last word on an exception nothing else handled: an access violation in a system DLL, for
 /// one. The heap may be broken here, so this writes `last-crash.log` without allocating, then
 /// lets Windows go on as it would have (the previous filter, then Windows Error Reporting).
@@ -255,6 +279,7 @@ unsafe extern "system" fn on_exception(info: *const EXCEPTION_POINTERS) -> i32 {
 }
 
 /// The file name of the module that holds `address`, e.g. `mfplat.dll`.
+#[cfg(windows)]
 fn module_name(address: *const std::ffi::c_void, out: &mut StackText<260>) -> bool {
     let mut module = HMODULE::default();
     let flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
@@ -277,11 +302,13 @@ fn module_name(address: *const std::ffi::c_void, out: &mut StackText<260>) -> bo
 }
 
 /// Text formatted into a fixed buffer, for code that must not allocate. Too long is cut short.
+#[cfg_attr(not(windows), allow(dead_code))]
 struct StackText<const N: usize> {
     buf: [u8; N],
     len: usize,
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
 impl<const N: usize> StackText<N> {
     fn new() -> Self {
         Self { buf: [0; N], len: 0 }
@@ -365,17 +392,28 @@ impl State {
     /// Sets the log folder and makes it now: a crash handler can only open a file in it.
     fn set_dir(&mut self, dir: PathBuf) {
         let _ = std::fs::create_dir_all(&dir);
-        self.crash_wide = dir.join(CRASH_FILE).as_os_str().encode_wide().chain([0]).collect();
+        #[cfg(windows)]
+        {
+            self.crash_wide = dir.join(CRASH_FILE).as_os_str().encode_wide().chain([0]).collect();
+        }
+        #[cfg(not(windows))]
+        {
+            self.crash_path = Some(dir.join(CRASH_FILE));
+        }
         self.dir = Some(dir);
     }
 
-    /// Writes `last-crash.log`: `header`, then the lines in memory. Allocates nothing, so it also
-    /// works from the native exception filter.
+    /// Writes `last-crash.log`: `header`, then the lines in memory. Allocates nothing on Windows,
+    /// so it also works from the native exception filter.
     fn write_crash(&self, header: &str) {
+        #[cfg(not(windows))]
+        let Some(Ok(mut file)) = self.crash_path.as_ref().map(File::create) else { return };
+        #[cfg(windows)]
         if self.crash_wide.is_empty() {
             return;
         }
         // SAFETY: the path is null-terminated; the handle is owned by `file` and closed by it.
+        #[cfg(windows)]
         let mut file = unsafe {
             let Ok(handle) = CreateFileW(
                 PCWSTR(self.crash_wide.as_ptr()),
@@ -560,6 +598,7 @@ mod tests {
 
     #[test]
     fn stack_text_cuts_at_a_char() {
+        use std::fmt::Write as _;
         let mut t = StackText::<5>::new();
         let _ = t.write_str("abééé");
         assert_eq!(t.as_str(), "abé");
@@ -579,6 +618,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
     fn names_the_module_of_an_address() {
         let mut name = StackText::<260>::new();
         assert!(module_name(names_the_module_of_an_address as *const std::ffi::c_void, &mut name));

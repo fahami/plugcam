@@ -120,9 +120,13 @@ export interface Snapshot {
   notice: Notice | null;
   /** Running from a portable folder rather than installed. */
   portable: boolean;
-  /** Portable only: "Plugcam Camera" still has to be added to Windows. */
+  /** The app adds "Plugcam Camera" itself (portable Windows version, macOS). */
+  managesCamera: boolean;
+  /** "Plugcam Camera" still has to be added: to Windows, or as the macOS camera extension. */
   cameraMissing: boolean;
   mica: boolean;
+  /** `windows` or `macos`. */
+  os: string;
   /** The language in use. */
   language: string;
   /** What "same as Windows" resolves to. */

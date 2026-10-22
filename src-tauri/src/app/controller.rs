@@ -26,7 +26,7 @@ use crate::settings::{Settings, VCAM_SIZES};
 use crate::vcam::VirtualCamera;
 use crate::wifi::{self, QrPairing};
 use super::i18n;
-use crate::{platform, portable, resources};
+use crate::{platform, portable, vcam};
 
 const DEVICE_POLL: Duration = Duration::from_millis(1500);
 /// After this long without zoom messages, the zoom the phone reported is trusted over the
@@ -82,9 +82,15 @@ pub struct Snapshot {
     pub notice: Option<Notice>,
     /// Running from a portable folder rather than installed.
     pub portable: bool,
-    /// Portable only: "Plugcam Camera" still has to be added to Windows (needs admin once).
+    /// The app adds "Plugcam Camera" itself (portable Windows version, macOS) rather than an
+    /// installer.
+    pub manages_camera: bool,
+    /// "Plugcam Camera" still has to be added: to Windows (needs admin once), or as the camera
+    /// extension on macOS (allowed once in System Settings).
     pub camera_missing: bool,
     pub mica: bool,
+    /// `windows` or `macos`, for the few texts that differ.
+    pub os: String,
     /// The UI language in use: the setting, else the one matching Windows.
     pub language: String,
     /// What "same as Windows" means on this PC.
@@ -213,10 +219,10 @@ impl Controller {
         let server_file = server::server_file().map_err(|e| e.to_string());
         let registered = platform::vcam_registered_path().is_some();
         let problem = if adb.is_none() {
-            Some("adb.exe not found".to_string())
+            Some("adb not found".to_string())
         } else if let Err(e) = &server_file {
             Some(e.clone())
-        } else if !registered && !portable::is_portable() {
+        } else if !registered && !platform::app_manages_camera() {
             Some("Plugcam Camera is not installed (camera DLL not registered)".to_string())
         } else {
             None
@@ -247,7 +253,7 @@ impl Controller {
                 zoom_sent: None,
                 zoom_range: None,
                 problem,
-                camera_missing: !registered && portable::is_portable(),
+                camera_missing: !registered && platform::app_manages_camera(),
                 notice: None,
                 last_sent: None,
             }),
@@ -260,7 +266,7 @@ impl Controller {
             qr_counter: AtomicU64::new(0),
             forgotten: Arc::new(Mutex::new(forgotten)),
             paired: Mutex::new(None),
-            mica: platform::windows_build() >= 22000,
+            mica: platform::mica(),
             system_locale: sys_locale::get_locale().unwrap_or_default(),
         });
 
@@ -409,8 +415,10 @@ impl Controller {
             problem: st.problem.clone(),
             notice: st.notice.clone(),
             portable: portable::is_portable(),
+            manages_camera: platform::app_manages_camera(),
             camera_missing: st.camera_missing,
             mica: self.mica,
+            os: if cfg!(target_os = "macos") { "macos" } else { "windows" }.into(),
             language: i18n::resolve(st.settings.language.as_deref(), &self.system_locale).into(),
             system_language: i18n::resolve(None, &self.system_locale).into(),
         }
@@ -481,10 +489,7 @@ impl Controller {
             st.vcam = None; // size changed: apps will reopen the device
         }
         if st.vcam.is_none() {
-            let created = resources::vcam_dll()
-                .ok_or_else(|| "plugcam_cam.dll not found".to_string())
-                .and_then(|dll| VirtualCamera::create(&dll, size.0, size.1).map_err(|e| e.to_string()));
-            match created {
+            match vcam::open(size.0, size.1) {
                 Ok(v) => st.vcam = Some(v),
                 Err(message) => {
                     log::error!("creating the camera: {message}");
@@ -706,16 +711,18 @@ impl Controller {
         st.camera_on = false;
     }
 
-    /// Portable only: adds "Plugcam Camera" to Windows or removes it, after Windows' consent
-    /// prompt. The camera is turned off before removing.
+    /// Portable Windows version and macOS: adds "Plugcam Camera" or removes it, after the
+    /// system's consent prompt (Windows) or approval in System Settings (macOS). The camera is
+    /// turned off and let go before removing.
     pub fn set_camera_registered(&self, on: bool) -> Result<(), String> {
-        if !portable::is_portable() {
+        if !platform::app_manages_camera() {
             return Err("the installer manages the camera".into());
         }
         if !on {
             self.set_camera_on(false);
+            self.state.lock().unwrap().vcam = None;
         }
-        let result = portable::set_camera_registered(on);
+        let result = platform::set_camera_registered(on);
         let mut st = self.state.lock().unwrap();
         st.camera_missing = platform::vcam_registered_path().is_none();
         self.publish(&mut st);
@@ -752,6 +759,11 @@ impl Controller {
             let State { wifi_ids, settings, .. } = &mut *st;
             wifi_ids.retain(|_, id| settings.wifi_phones.iter().any(|p| &p.id == id));
             st.devices = devices;
+            // The camera can be added outside the app too, e.g. an approval in System Settings that
+            // came after the app stopped waiting for it.
+            if st.camera_missing && platform::vcam_registered_path().is_some() {
+                st.camera_missing = false;
+            }
             let now_ready = st.active(&self.forgotten.lock().unwrap()).filter(|d| d.is_ready()).cloned();
             self.follow_picked(&st);
             self.name_wifi_phones(&mut st);
@@ -833,7 +845,7 @@ impl Controller {
     }
 
     fn adb(&self) -> Result<Adb, String> {
-        self.adb.clone().ok_or_else(|| "adb.exe not found".to_string())
+        self.adb.clone().ok_or_else(|| "adb not found".to_string())
     }
 
     /// Picks the phone to use (`None`: the first ready one, USB first). A Wi-Fi phone is stored

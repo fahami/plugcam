@@ -51,3 +51,38 @@ jobs:
         with:
           name: plugcam-portable
           path: src-tauri/target/release/bundle/portable/*.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # tauri::generate_context! needs the built frontend.
+      - name: Frontend checks and build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm check
+          pnpm build
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test --release
+
+      # Compiles the camera extension; signing needs a team, so the app itself is built with
+      # scripts/macos-build.sh on a Mac signed in to Xcode.
+      - name: Camera extension
+        run: |
+          brew install xcodegen
+          cd macos && xcodegen generate
+          xcodebuild -project PlugcamMac.xcodeproj -scheme Plugcam -configuration Release \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build

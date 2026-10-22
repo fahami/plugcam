@@ -2902,11 +2902,13 @@ dependencies = [
 name = "plugcam"
 version = "0.2.1"
 dependencies = [
+ "cc",
  "env_logger",
  "fast_image_resize",
  "getrandom 0.3.4",
  "jiff",
  "jpeg-encoder",
+ "libc",
  "libloading 0.8.9",
  "log",
  "qrcode",

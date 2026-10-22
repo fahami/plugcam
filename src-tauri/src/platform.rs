@@ -1,5 +1,8 @@
 //! Small Windows facts the app needs: is the camera DLL registered, which Windows build, and
-//! what a bug report says about the PC.
+//! what a bug report says about the PC. `macos/platform.rs` has the same functions for macOS.
+
+use std::os::windows::process::CommandExt;
+use std::path::Path;
 
 use windows::Win32::Foundation::ERROR_SUCCESS;
 use windows::Win32::System::Registry::{HKEY, HKEY_CLASSES_ROOT, HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW};
@@ -28,6 +31,24 @@ pub fn vcam_registered_path() -> Option<String> {
     std::path::Path::new(&path).is_file().then_some(path)
 }
 
+/// The installer registers the camera; the portable version does it itself.
+pub fn app_manages_camera() -> bool {
+    crate::portable::is_portable()
+}
+
+/// Portable only: registers or removes the camera DLL, after Windows' consent prompt.
+pub fn set_camera_registered(on: bool) -> Result<(), String> {
+    crate::portable::set_camera_registered(on)
+}
+
+/// Nothing to update at start: the installer replaced the DLL.
+pub fn refresh_camera() {}
+
+/// Windows 11 draws the window's Mica background.
+pub fn mica() -> bool {
+    windows_build() >= 22000
+}
+
 /// Windows build number (22000+ is Windows 11), 0 if unknown.
 pub fn windows_build() -> u32 {
     reg_string(HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", Some("CurrentBuildNumber"))
@@ -36,7 +57,7 @@ pub fn windows_build() -> u32 {
 }
 
 /// e.g. `Windows 11 24H2 (build 26100)`.
-pub fn windows_name() -> String {
+pub fn os_name() -> String {
     let build = windows_build();
     let release = reg_string(HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", Some("DisplayVersion"));
     let major = if build >= 22000 { 11 } else { 10 };
@@ -67,6 +88,17 @@ pub fn gpu_names() -> Vec<String> {
     names
 }
 
+/// Opens a link in the default browser, or a folder in Explorer.
+pub fn open(target: &str) -> Result<(), String> {
+    std::process::Command::new("explorer").arg(target).spawn().map(drop).map_err(|e| e.to_string())
+}
+
+/// Shows a file selected in Explorer.
+pub fn reveal(path: &Path) {
+    // `/select,"path"` has to reach Explorer unquoted as a whole, which `arg` would do.
+    let _ = std::process::Command::new("explorer").raw_arg(format!("/select,\"{}\"", path.display())).spawn();
+}
+
 /// The user's Downloads folder.
 pub fn downloads_dir() -> Option<std::path::PathBuf> {
     use windows::Win32::System::Com::CoTaskMemFree;
@@ -86,7 +118,7 @@ mod tests {
     #[test]
     fn reads_windows_build() {
         assert!(windows_build() >= 10240, "Windows 10 or later");
-        assert!(windows_name().starts_with("Windows 1"));
+        assert!(os_name().starts_with("Windows 1"));
     }
 
     #[test]

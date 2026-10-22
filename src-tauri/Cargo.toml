@@ -3,7 +3,7 @@ name = "plugcam"
 version = "0.2.1"
 edition = "2024"
 license = "Apache-2.0"
-description = "Android phone camera as a Windows webcam"
+description = "Android phone camera as a Windows or macOS webcam"
 publish = false
 
 default-run = "plugcam"
@@ -22,7 +22,6 @@ fast_image_resize = "6.1.0"
 getrandom = "0.3.4"
 jiff = { version = "0.2.37", default-features = false, features = ["std"] }
 jpeg-encoder = { version = "0.7.1", features = ["simd"] }
-libloading = "0.8"
 log = "0.4.34"
 qrcode = { version = "0.14.1", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
@@ -34,12 +33,21 @@ tauri-plugin-autostart = "2.5.1"
 tauri-plugin-single-instance = "2.4.5"
 tauri-plugin-updater = "2.13.0"
 thiserror = "2"
-windows = { version = "0.62.2", features = ["Win32_Media_MediaFoundation", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_Diagnostics_Debug", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_ProcessStatus", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
 yuvutils-rs = "0.8.3"
 zip = { version = "4.6.1", default-features = false, features = ["deflate"] }
 
+[target.'cfg(windows)'.dependencies]
+libloading = "0.8"
+windows = { version = "0.62.2", features = ["Win32_Media_MediaFoundation", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_Diagnostics_Debug", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_ProcessStatus", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+# getrusage in examples/replay.rs
+libc = "0.2"
+
 [build-dependencies]
 tauri-build = { version = "2.6.3", features = [] }
+# The macOS side (VideoToolbox decoder, camera extension client) is Objective-C in macos/host.
+cc = "1.2"
 
 # `tauri dev` builds the dev profile. Unoptimized color conversion and scaling take ~190 ms a
 # frame there (5 fps, and the phone starts dropping frames), so optimize even in dev.
